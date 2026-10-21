@@ -1,0 +1,194 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"></head><body><title>Caçador de Promoções</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: uma coluna estreita de "etiquetas de preço"; resumo no topo, achados por seção, saúde das lojas no fim */
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --ink:#151b26; --muted:#5b6475; --line:#dde1e8;
+  --tag:#ffd23f; --on-tag:#151b26;
+  --bug:#d7263d; --hot:#e86a10; --near:#6b7385; --ok:#1f8a4c; --warn:#c48a00; --off:#9aa1ad;
+  --display:"Archivo",system-ui,sans-serif; --body:"Atkinson Hyperlegible",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f131a; --surface:#171c25; --ink:#e9ecf2; --muted:#9aa3b5; --line:#2a3140;
+  --tag:#ffd23f; --on-tag:#151b26;
+  --bug:#ff5a6e; --hot:#ff8c3a; --near:#8e97a9; --ok:#43c27a; --warn:#e5b236; --off:#5d6575; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f131a; --surface:#171c25; --ink:#e9ecf2; --muted:#9aa3b5; --line:#2a3140;
+  --tag:#ffd23f; --on-tag:#151b26;
+  --bug:#ff5a6e; --hot:#ff8c3a; --near:#8e97a9; --ok:#43c27a; --warn:#e5b236; --off:#5d6575; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+main{max-width:44rem;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-weight:800;font-stretch:80%;font-size:2rem;line-height:1.05;letter-spacing:-.01em}
+h2{font-weight:700;font-stretch:85%;font-size:1.15rem;display:flex;align-items:baseline;gap:8px}
+h2 .n{font:600 .8rem var(--body);color:var(--muted)}
+.meta{color:var(--muted);margin:6px 0 0;font-size:.92rem}
+.resumo{margin:10px 0 0;max-width:65ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);
+  border-radius:999px;padding:4px 12px;font-size:.88rem;font-variant-numeric:tabular-nums}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+section{display:flex;flex-direction:column;gap:10px}
+.vazio{color:var(--muted);font-size:.92rem;margin:0}
+.oferta{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;
+  display:grid;grid-template-columns:1fr auto;gap:4px 14px;align-items:start}
+.oferta[data-nivel="bug"]{border-left:4px solid var(--bug)}
+.oferta[data-nivel="excelente"]{border-left:4px solid var(--hot)}
+.oferta[data-nivel="quase"],.oferta[data-nivel="info"]{border-left:4px solid var(--near)}
+.nivel{font:700 .72rem var(--body);letter-spacing:.06em;text-transform:uppercase}
+.nivel[data-nivel="bug"]{color:var(--bug)} .nivel[data-nivel="excelente"]{color:var(--hot)}
+.nivel[data-nivel="quase"],.nivel[data-nivel="info"]{color:var(--near)}
+.titulo{font-weight:700;margin:2px 0 0;min-width:0;overflow-wrap:anywhere}
+.preco{grid-row:1/3;grid-column:2;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.etiqueta{background:var(--tag);color:var(--on-tag);font:800 1.15rem var(--display);font-stretch:80%;
+  padding:3px 10px;border-radius:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.de{color:var(--muted);font-size:.82rem;text-decoration:line-through;font-variant-numeric:tabular-nums}
+.desc{font:700 .85rem var(--body);color:var(--ok);font-variant-numeric:tabular-nums}
+.detalhes{grid-column:1/-1;color:var(--muted);font-size:.9rem;min-width:0;overflow-wrap:anywhere}
+.acoes{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
+.btn{display:inline-block;background:var(--ink);color:var(--bg);text-decoration:none;font-weight:700;
+  font-size:.9rem;padding:8px 14px;border-radius:6px}
+.btn:focus-visible{outline:3px solid var(--tag);outline-offset:2px}
+.selo{font-size:.8rem;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:2px 6px}
+.saude-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font:600 .75rem var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+tr:last-child td{border-bottom:0}
+.st{display:inline-flex;align-items:center;gap:5px}
+.st[data-s="ok"]{color:var(--ok)} .st[data-s="vazio"],.st[data-s="tempo"]{color:var(--warn)}
+.st[data-s="erro"],.st[data-s="bloqueado"],.st[data-s="captcha"]{color:var(--bug)}
+.st[data-s="pulado"],.st[data-s="-"]{color:var(--off)}
+ul.manut{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:420px){.oferta{grid-template-columns:1fr}.preco{grid-row:auto;grid-column:1;align-items:flex-start;flex-direction:row;flex-wrap:wrap;gap:8px;align-items:baseline}}
+</style>
+
+<main>
+  <header>
+    <h1>Caçador de Promoções</h1>
+    <p class="meta" id="meta">Carregando o último relatório…</p>
+    <p class="resumo" id="resumo"></p>
+    <div class="chips" id="chips"></div>
+  </header>
+  <div id="secoes"></div>
+  <section id="sec-saude" hidden>
+    <h2>Saúde das lojas</h2>
+    <div class="saude-wrap"><table id="saude"></table></div>
+  </section>
+  <section id="sec-manut" hidden>
+    <h2>Manutenção</h2>
+    <ul class="manut" id="manut"></ul>
+  </section>
+  <footer>Erros de preço podem ser cancelados pela loja. Compre rápido e confira o vendedor.</footer>
+</main>
+
+<script type="application/json" id="dados-embutidos">{"ts": "20261024-1306", "inicio": "2026-10-24T13:06:54-0300", "duracao_s": 1804, "lojas_ok": 17, "lojas_total": 20, "resumo": "Rodada sem achados: nenhum candidato novo chegou perto do desconto mínimo contra o preço comum do modelo.", "achados": [{"nivel": "excelente", "secao": "steam", "titulo": "shapez", "preco_brl": 3.29, "preco_normal_brl": 32.99, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/1318690/shapez/", "obs": "96% de aprovação em 8.434 análises. Menor preço histórico não conferido. · analisado em 21/10 16:49, preço igual desde então", "confirmado": true}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Invincible Presents: Atom Eve", "preco_brl": 3.29, "preco_normal_brl": 32.99, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/2060870/Invincible_Presents_Atom_Eve/", "obs": "96% positivas (552 análises) · analisado em 22/10 19:16, preço igual desde então", "confirmado": true}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Killing Floor", "preco_brl": 3.49, "preco_normal_brl": 34.99, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/1250/Killing_Floor/", "obs": "96% positivas (21.851 análises); preço cheio na Steam R$ 34,99 · analisado em 23/10 15:15, preço igual desde então", "confirmado": true}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Tomb Raider Game of the Year", "preco_brl": 8.34, "preco_normal_brl": 83.49, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/203160/Tomb_Raider_Game_of_the_Year/", "obs": "94% positivas (53.503 análises); preço cheio na Steam R$ 83,49 · analisado em 23/10 15:15, preço igual desde então", "confirmado": true}, {"nivel": "excelente", "secao": "steam", "titulo": "Shadow Tactics: Blades of the Shogun", "preco_brl": 10.99, "preco_normal_brl": 109.99, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/418240/Shadow_Tactics_Blades_of_the_Shogun/", "obs": "94% de aprovação em 9.092 análises. Menor preço histórico não conferido. · analisado em 21/10 16:49, preço igual desde então", "confirmado": true}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "The Walking Dead: The Telltale Definitive Series", "preco_brl": 13.49, "preco_normal_brl": 134.99, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/1449690/The_Walking_Dead_The_Telltale_Definitive_Series/", "obs": "97% positivas (13818 análises) · analisado em 22/10 19:16, preço igual desde então", "confirmado": true}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Before Your Eyes", "preco_brl": 6.59, "preco_normal_brl": 32.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/1082430/Before_Your_Eyes/", "obs": "98% positivas (15697 análises) · analisado em 22/10 19:16, preço igual desde então", "confirmado": true}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "The Walking Dead (Telltale, 1ª temporada)", "preco_brl": 9.39, "preco_normal_brl": 46.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/207610/The_Walking_Dead/", "obs": "97% positivas (25097 análises) · analisado em 22/10 19:16, preço igual desde então", "confirmado": true}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "The Walking Dead: Season Two", "preco_brl": 9.39, "preco_normal_brl": 46.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/261030/The_Walking_Dead_Season_Two/", "obs": "95% positivas (13016 análises) · analisado em 22/10 19:16, preço igual desde então", "confirmado": true}, {"nivel": "excelente", "secao": "steam", "titulo": "Resident Evil 2 (Remake)", "preco_brl": 33.8, "preco_normal_brl": 169.0, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/883710/Resident_Evil_2/", "obs": "96% de aprovação em 60.247 análises. · analisado em 21/10 16:49, preço igual desde então", "confirmado": true}, {"nivel": "bug", "secao": "gratis", "item": "", "titulo": "Sker Ritual (Epic Games)", "preco_brl": 0.0, "preco_normal_brl": 101.0, "desconto_real_pct": 100, "loja": "Epic Games", "url": "https://www.gamerpower.com/open/sker-ritual", "obs": "Grátis por tempo limitado na Epic; 84% positivas (3997 análises) na Steam · analisado em 22/10 19:16, preço igual desde então", "confirmado": true}, {"nivel": "bug", "secao": "gratis", "titulo": "Dwarven Realms", "preco_brl": 0.0, "desconto_real_pct": 100, "loja": "Steam (key grátis)", "url": "https://www.gamerpower.com/open/dwarven-realms-steam-key-giveaway", "obs": "Key grátis por tempo limitado; 79% positivas na Steam (2.052 análises), acima dos mínimos. Pode esgotar. · analisado em 21/10 21:17, preço igual desde então", "confirmado": true}], "saude": [{"plataforma": "nuuvem", "metodo": "request", "status": "pulado", "detalhe": "falhou nas últimas 3 rodadas; novo teste em até 24 h"}, {"plataforma": "mercado-livre", "metodo": "busca-web", "status": "pulado", "detalhe": "falhou nas últimas 3 rodadas; novo teste em até 24 h"}, {"plataforma": "shopee", "metodo": "busca-web", "status": "pulado", "detalhe": "falhou nas últimas 3 rodadas; novo teste em até 24 h"}, {"plataforma": "aliexpress", "metodo": "request", "status": "pulado", "detalhe": "falhou nas últimas 3 rodadas; novo teste em até 24 h"}, {"plataforma": "google-shopping", "metodo": "navegador", "status": "pulado", "detalhe": "pediu verificação anti-robô há menos de 12 h; pausa para a loja esfriar"}, {"plataforma": "pelando", "metodo": "request", "status": "pulado", "detalhe": "falhou nas últimas 3 rodadas; novo teste em até 24 h"}, {"plataforma": "aliexpress", "metodo": "navegador", "status": "ok", "ofertas": 241, "paginas": 10, "detalhe": "o navegador passou do tempo e foi encerrado"}, {"plataforma": "amazon", "metodo": "navegador", "status": "ok", "ofertas": 480, "paginas": 17, "detalhe": "o navegador passou do tempo e foi encerrado"}, {"plataforma": "americanas", "metodo": "navegador", "status": "ok", "ofertas": 37, "paginas": 2, "detalhe": ""}, {"plataforma": "bing-shopping", "metodo": "navegador", "status": "ok", "ofertas": 174, "paginas": 6, "detalhe": ""}, {"plataforma": "casas-bahia", "metodo": "navegador", "status": "ok", "ofertas": 36, "paginas": 12, "detalhe": "HTTP 200, 0 candidatos; o navegador passou do tempo e foi encerrado"}, {"plataforma": "hardmob", "metodo": "navegador", "status": "ok", "ofertas": 60, "paginas": 1, "detalhe": ""}, {"plataforma": "jogos-gratis", "metodo": "api", "status": "ok", "ofertas": 5, "paginas": 1, "detalhe": ""}, {"plataforma": "kabum", "metodo": "navegador", "status": "ok", "ofertas": 480, "paginas": 16, "detalhe": "o navegador passou do tempo e foi encerrado"}, {"plataforma": "kabum", "metodo": "request", "status": "ok", "ofertas": 160, "paginas": 16, "detalhe": ""}, {"plataforma": "lojas-de-keys", "metodo": "api", "status": "ok", "ofertas": 11, "paginas": 1, "detalhe": ""}, {"plataforma": "magalu", "metodo": "navegador", "status": "ok", "ofertas": 420, "paginas": 13, "detalhe": "o navegador passou do tempo e foi encerrado"}, {"plataforma": "mercado-livre", "metodo": "navegador", "status": "ok", "ofertas": 456, "paginas": 8, "detalhe": ""}, {"plataforma": "nuuvem", "metodo": "navegador", "status": "ok", "ofertas": 30, "paginas": 1, "detalhe": ""}, {"plataforma": "pelando", "metodo": "navegador", "status": "ok", "ofertas": 6, "paginas": 18, "detalhe": "HTTP 200, 0 candidatos; o navegador passou do tempo e foi encerrado"}, {"plataforma": "pichau", "metodo": "navegador", "status": "ok", "ofertas": 283, "paginas": 14, "detalhe": "o navegador passou do tempo e foi encerrado"}, {"plataforma": "promobit", "metodo": "navegador", "status": "ok", "ofertas": 100, "paginas": 3, "detalhe": ""}, {"plataforma": "promobit", "metodo": "request", "status": "ok", "ofertas": 30, "paginas": 3, "detalhe": ""}, {"plataforma": "steam", "metodo": "api", "status": "ok", "ofertas": 39, "paginas": 1, "detalhe": ""}, {"plataforma": "terabyte", "metodo": "navegador", "status": "ok", "ofertas": 295, "paginas": 15, "detalhe": "o navegador passou do tempo e foi encerrado"}, {"plataforma": "geral", "metodo": "busca-web", "status": "vazio", "ofertas": 0, "detalhe": "bug de preço hoje e erro de preço outubro: só resultados sem relação com lojas brasileiras"}], "manutencao": ["Shopee e Google Shopping ficaram sem dados nesta rodada."]}</script>
+<script>
+(function () {
+  const SECOES = [
+    ["tecnologia", "Tecnologia e periféricos"], ["steam", "Steam"], ["keys", "Keys em lojas oficiais"],
+    ["gratis", "Grátis por tempo limitado"], ["quase", "Quase lá"]];
+  const NIVEL = { bug: "Bug de preço", excelente: "Excelente", quase: "Quase lá", info: "Vale olhar" };
+  const FORMAS = ["api", "request", "navegador", "busca-web"];
+  const NOME_FORMA = { api: "API", request: "Página", navegador: "Navegador", "busca-web": "Busca web" };
+  const NOME_ST = { ok: "ok", vazio: "vazio", erro: "erro", bloqueado: "bloqueado", captcha: "captcha",
+                    pulado: "pulado", tempo: "tempo", "-": "—" };
+  const brl = (v) => v == null ? "" : "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const el = (tag, attrs, ...filhos) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === "text") e.textContent = v; else e.setAttribute(k, v);
+    }
+    for (const f of filhos) if (f) e.append(f);
+    return e;
+  };
+  const seguro = (u) => /^https?:\/\//i.test(u || "") ? u : null;
+
+  function cartao(o) {
+    const preco = el("div", { class: "preco" }, el("span", { class: "etiqueta", text: brl(o.preco_brl) }));
+    if (o.preco_normal_brl && o.preco_normal_brl > o.preco_brl) preco.append(el("span", { class: "de", text: brl(o.preco_normal_brl) }));
+    if (o.desconto_real_pct) preco.append(el("span", { class: "desc", text: "−" + Math.round(o.desconto_real_pct) + "% real" }));
+    const acoes = el("div", { class: "acoes" });
+    const url = seguro(o.url);
+    if (url) acoes.append(el("a", { class: "btn", href: url, target: "_blank", rel: "noopener", text: "Abrir oferta" }));
+    if (o.loja) acoes.append(el("span", { class: "selo", text: o.loja }));
+    if (o.confirmado === false) acoes.append(el("span", { class: "selo", text: "não confirmado na loja" }));
+    return el("article", { class: "oferta", "data-nivel": o.nivel },
+      el("div", {}, el("span", { class: "nivel", "data-nivel": o.nivel, text: NIVEL[o.nivel] || o.nivel }),
+                    el("p", { class: "titulo", text: o.titulo })),
+      preco, o.obs ? el("div", { class: "detalhes", text: o.obs }) : null, acoes);
+  }
+
+  function render(d) {
+    const quando = d.inicio ? new Date(d.inicio) : null;
+    const partes = [];
+    if (quando) partes.push("Rodada de " + quando.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) +
+                            " às " + quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+    if (d.duracao_s) partes.push(Math.floor(d.duracao_s / 60) + " min " + Math.round(d.duracao_s % 60) + " s");
+    if (d.lojas_ok != null) partes.push(d.lojas_ok + " de " + d.lojas_total + " lojas responderam");
+    document.getElementById("meta").textContent = partes.join(" · ");
+    document.getElementById("resumo").textContent = d.resumo || "";
+
+    const achados = d.achados || [];
+    const conta = (n) => achados.filter((o) => o.nivel === n).length;
+    const chips = document.getElementById("chips");
+    chips.replaceChildren();
+    for (const [n, cor] of [["bug", "var(--bug)"], ["excelente", "var(--hot)"], ["quase", "var(--near)"]]) {
+      const c = el("span", { class: "chip" }, el("span", { class: "dot", style: "color:" + cor }));
+      c.append(conta(n) + " " + (NIVEL[n] || n).toLowerCase());
+      chips.append(c);
+    }
+
+    const secoes = document.getElementById("secoes");
+    secoes.replaceChildren();
+    for (const [id, nome] of SECOES) {
+      const itens = achados.filter((o) => (id === "quase" ? o.nivel === "quase" : o.secao === id && o.nivel !== "quase"));
+      const s = el("section", {}, el("h2", {}, nome, el("span", { class: "n", text: itens.length ? String(itens.length) : "" })));
+      if (!itens.length) s.append(el("p", { class: "vazio", text: "Nada relevante agora." }));
+      const ordem = { bug: 0, excelente: 1, info: 2, quase: 3 };
+      itens.sort((a, b) => (ordem[a.nivel] ?? 9) - (ordem[b.nivel] ?? 9));
+      for (const o of itens) s.append(cartao(o));
+      secoes.append(s);
+    }
+
+    const formas = d.saude || [];
+    if (formas.length) {
+      const lojas = [...new Set(formas.map((f) => f.plataforma))].sort();
+      const tab = document.getElementById("saude");
+      tab.replaceChildren(el("tr", {}, el("th", { text: "Loja" }), ...FORMAS.map((f) => el("th", { text: NOME_FORMA[f] }))));
+      for (const l of lojas) {
+        const tr = el("tr", {}, el("td", { text: l }));
+        for (const f of FORMAS) {
+          const x = formas.find((y) => y.plataforma === l && y.metodo === f);
+          const s = x ? x.status : "-";
+          const td = el("td", { title: x && x.detalhe ? x.detalhe : null },
+            el("span", { class: "st", "data-s": s }, el("span", { class: "dot" }), NOME_ST[s] || s));
+          tr.append(td);
+        }
+        tab.append(tr);
+      }
+      document.getElementById("sec-saude").hidden = false;
+    }
+    const manut = d.manutencao || [];
+    if (manut.length) {
+      document.getElementById("manut").replaceChildren(...manut.map((m) => el("li", { text: m })));
+      document.getElementById("sec-manut").hidden = false;
+    }
+  }
+
+  const embutido = document.getElementById("dados-embutidos");
+  if (embutido) { render(JSON.parse(embutido.textContent)); return; }
+  fetch("dados.json", { cache: "no-store" }).then((r) => {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(render).catch(() => {
+    document.getElementById("meta").textContent = "Ainda não há relatório publicado. Ele aparece aqui depois da próxima rodada.";
+  });
+})();
+</script>
+</body></html>
