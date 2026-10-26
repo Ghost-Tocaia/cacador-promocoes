@@ -1,0 +1,215 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"></head><body><title>Caçador de Promoções</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: uma coluna estreita de "etiquetas de preço"; resumo no topo, achados por seção, saúde das lojas no fim */
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --ink:#151b26; --muted:#5b6475; --line:#dde1e8;
+  --tag:#ffd23f; --on-tag:#151b26;
+  --bug:#d7263d; --hot:#e86a10; --near:#6b7385; --ok:#1f8a4c; --warn:#c48a00; --off:#9aa1ad;
+  --display:"Archivo",system-ui,sans-serif; --body:"Atkinson Hyperlegible",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f131a; --surface:#171c25; --ink:#e9ecf2; --muted:#9aa3b5; --line:#2a3140;
+  --tag:#ffd23f; --on-tag:#151b26;
+  --bug:#ff5a6e; --hot:#ff8c3a; --near:#8e97a9; --ok:#43c27a; --warn:#e5b236; --off:#5d6575; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f131a; --surface:#171c25; --ink:#e9ecf2; --muted:#9aa3b5; --line:#2a3140;
+  --tag:#ffd23f; --on-tag:#151b26;
+  --bug:#ff5a6e; --hot:#ff8c3a; --near:#8e97a9; --ok:#43c27a; --warn:#e5b236; --off:#5d6575; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+main{max-width:44rem;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-weight:800;font-stretch:80%;font-size:2rem;line-height:1.05;letter-spacing:-.01em}
+h2{font-weight:700;font-stretch:85%;font-size:1.15rem;display:flex;align-items:baseline;gap:8px}
+h2 .n{font:600 .8rem var(--body);color:var(--muted)}
+.meta{color:var(--muted);margin:6px 0 0;font-size:.92rem}
+.resumo{margin:10px 0 0;max-width:65ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);
+  border-radius:999px;padding:4px 12px;font-size:.88rem;font-variant-numeric:tabular-nums}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+section{display:flex;flex-direction:column;gap:10px}
+.vazio{color:var(--muted);font-size:.92rem;margin:0}
+.oferta{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;
+  display:grid;grid-template-columns:1fr auto;gap:4px 14px;align-items:start}
+.oferta[data-nivel="bug"]{border-left:4px solid var(--bug)}
+.oferta[data-nivel="excelente"]{border-left:4px solid var(--hot)}
+.oferta[data-nivel="quase"],.oferta[data-nivel="info"]{border-left:4px solid var(--near)}
+.nivel{font:700 .72rem var(--body);letter-spacing:.06em;text-transform:uppercase}
+.nivel[data-nivel="bug"]{color:var(--bug)} .nivel[data-nivel="excelente"]{color:var(--hot)}
+.nivel[data-nivel="quase"],.nivel[data-nivel="info"]{color:var(--near)}
+.titulo{font-weight:700;margin:2px 0 0;min-width:0;overflow-wrap:anywhere}
+.preco{grid-row:1/3;grid-column:2;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.etiqueta{background:var(--tag);color:var(--on-tag);font:800 1.15rem var(--display);font-stretch:80%;
+  padding:3px 10px;border-radius:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.de{color:var(--muted);font-size:.82rem;text-decoration:line-through;font-variant-numeric:tabular-nums}
+.desc{font:700 .85rem var(--body);color:var(--ok);font-variant-numeric:tabular-nums}
+.detalhes{grid-column:1/-1;color:var(--muted);font-size:.9rem;min-width:0;overflow-wrap:anywhere}
+.acoes{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
+.btn{display:inline-block;background:var(--ink);color:var(--bg);text-decoration:none;font-weight:700;
+  font-size:.9rem;padding:8px 14px;border-radius:6px}
+.btn:focus-visible{outline:3px solid var(--tag);outline-offset:2px}
+.selo{font-size:.8rem;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:2px 6px}
+.selo.urgente{color:var(--bug);border-color:currentColor;font-weight:700}
+.saude-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font:600 .75rem var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+tr:last-child td{border-bottom:0}
+.st{display:inline-flex;align-items:center;gap:5px}
+.st[data-s="ok"]{color:var(--ok)} .st[data-s="vazio"],.st[data-s="tempo"]{color:var(--warn)}
+.st[data-s="erro"],.st[data-s="bloqueado"],.st[data-s="captcha"]{color:var(--bug)}
+.st[data-s="pulado"],.st[data-s="-"]{color:var(--off)}
+ul.manut{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:420px){.oferta{grid-template-columns:1fr}.preco{grid-row:auto;grid-column:1;align-items:flex-start;flex-direction:row;flex-wrap:wrap;gap:8px;align-items:baseline}}
+</style>
+
+<main>
+  <header>
+    <h1>Caçador de Promoções</h1>
+    <p class="meta" id="meta">Carregando o último relatório…</p>
+    <p class="resumo" id="resumo"></p>
+    <div class="chips" id="chips"></div>
+  </header>
+  <div id="secoes"></div>
+  <section id="sec-saude" hidden>
+    <h2>Saúde das lojas</h2>
+    <div class="saude-wrap"><table id="saude"></table></div>
+  </section>
+  <section id="sec-manut" hidden>
+    <h2>Manutenção</h2>
+    <ul class="manut" id="manut"></ul>
+  </section>
+  <footer>Erros de preço podem ser cancelados pela loja. Compre rápido e confira o vendedor.</footer>
+</main>
+
+<script type="application/json" id="dados-embutidos">{"ts": "20261128-1303", "inicio": "2026-11-28T13:03:12-0300", "duracao_s": 528, "lojas_ok": 18, "lojas_total": 19, "resumo": "Nenhum bug de preço nem oferta nova de tecnologia que atinja os critérios entre os candidatos desta rodada. Os destaques são Stronghold HD e Stronghold Crusader HD com 80% de desconto na Steam, ambos muito bem avaliados.", "achados": [{"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Stronghold Crusader HD", "preco_brl": 3.39, "preco_normal_brl": 16.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/40970/Stronghold_Crusader_HD_2012/", "obs": "97% positivas em 6.296 análises. Preço normal é o cheio da própria Steam.", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Stronghold HD", "preco_brl": 2.39, "preco_normal_brl": 11.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/40950/Stronghold_HD_2012/", "obs": "94% positivas em 2.987 análises. Preço normal é o cheio da própria Steam.", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Barro 2020", "preco_brl": 1.74, "preco_normal_brl": 17.4, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/1168660/Barro_2020/", "obs": "84% positivas em 1936 análises · analisado em 14/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Barro GT", "preco_brl": 1.74, "preco_normal_brl": 17.4, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/1990740/Barro_GT/", "obs": "84% positivas em 827 análises. Preço conferido na Steam. · analisado em 28/11 07:08, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Razortron 2000", "preco_brl": 1.74, "preco_normal_brl": 17.4, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/539720/Razortron_2000/", "obs": "86% positivas (1.092 análises) · analisado em 23/11 13:13, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "UBERMOSH Vol.5", "preco_brl": 1.74, "preco_normal_brl": 17.4, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/640380/UBERMOSH_Vol5/", "obs": "92% positivas (1.538 análises); outros UBERMOSH com o mesmo preço · analisado em 19/11 18:21, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "DISTRAINT 2", "preco_brl": 2.99, "preco_normal_brl": 29.99, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/743390/DISTRAINT_2/", "obs": "95% positivas (686 análises). · analisado em 26/11 13:16, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Cruelty Squad", "preco_brl": 3.79, "preco_normal_brl": 37.99, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/1388770/Cruelty_Squad/", "obs": "96% positivas em 20 mil análises. · analisado em 26/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "TOEM: A Photo Adventure", "preco_brl": 4.99, "preco_normal_brl": 49.99, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/1307580/TOEM_A_Photo_Adventure/", "obs": "99% positivas (3.484 análises). · analisado em 18/11 08:28, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Shadow Tactics: Blades of the Shogun", "preco_brl": 10.99, "preco_normal_brl": 109.99, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/418240/Shadow_Tactics_Blades_of_the_Shogun/", "obs": "94% positivas (9.114 análises). · analisado em 26/11 13:16, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Detroit: Become Human", "preco_brl": 19.99, "preco_normal_brl": 199.99, "desconto_real_pct": 90, "loja": "Steam", "url": "https://store.steampowered.com/app/1222140/Detroit_Become_Human/", "obs": "95% positivas (60.290 análises) · analisado em 23/11 18:12, preço igual desde então", "confirmado": true, "termina_em": "2026-11-30T15:00", "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Sid Meier's Colonization (Classic)", "preco_brl": 1.81, "preco_normal_brl": 13.99, "desconto_real_pct": 87, "loja": "Steam", "url": "https://store.steampowered.com/app/327400/Sid_Meiers_Colonization_Classic/", "obs": "96% positivas (1.066 análises) · analisado em 23/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Divinity: Original Sin 2 - Definitive Edition", "preco_brl": 22.74, "preco_normal_brl": 163.98, "desconto_real_pct": 86, "loja": "Steam", "url": "https://store.steampowered.com/app/435150/Divinity_Original_Sin_2_Definitive_Edition/", "obs": "95% positivas (84.058 análises) · analisado em 23/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "FAR: Lone Sails", "preco_brl": 7.04, "preco_normal_brl": 46.99, "desconto_real_pct": 85, "loja": "Steam", "url": "https://store.steampowered.com/app/609320/FAR_Lone_Sails/", "obs": "93% positivas (9.032 análises). · analisado em 26/11 13:16, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Machinarium", "preco_brl": 10.49, "preco_normal_brl": 69.99, "desconto_real_pct": 85, "loja": "Steam", "url": "https://store.steampowered.com/app/40700/Machinarium/", "obs": "94% positivas (5.197 análises) · analisado em 16/11 07:07, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Batman: Arkham Asylum GOTY", "preco_brl": 13.49, "preco_normal_brl": 89.99, "desconto_real_pct": 85, "loja": "Steam", "url": "https://store.steampowered.com/app/35140/Batman_Arkham_Asylum_Game_of_the_Year_Edition/", "obs": "96% positivas (31.724 análises) · analisado em 23/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Insaniquarium Deluxe", "preco_brl": 1.98, "preco_normal_brl": 9.9, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/3320/Insaniquarium_Deluxe/", "obs": "97% positivas (4.940 análises) · analisado em 19/11 18:21, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Serious Sam Classic: The First Encounter", "preco_brl": 4.09, "preco_normal_brl": 20.49, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/41050/Serious_Sam_Classic_The_First_Encounter/", "obs": "94% positivas (1.233 análises) · analisado em 23/11 13:13, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Serious Sam Classic: The Second Encounter", "preco_brl": 4.09, "preco_normal_brl": 20.49, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/41060/Serious_Sam_Classic_The_Second_Encounter/", "obs": "95% positivas (1.818 análises) · analisado em 23/11 13:13, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Detective Grimoire", "preco_brl": 4.7, "preco_normal_brl": 23.5, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/272600/Detective_Grimoire/", "obs": "95% positivas (1.784 análises) · analisado em 23/11 13:13, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Pilgrims", "preco_brl": 4.99, "preco_normal_brl": 24.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/1049280/Pilgrims/", "obs": "95% positivas em 1579 análises · analisado em 14/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Dust: An Elysian Tail", "preco_brl": 4.99, "preco_normal_brl": 24.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/236090/Dust_An_Elysian_Tail/", "obs": "94% positivas (9340 análises); histórico de menor preço não consultado · analisado em 20/11 18:33, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Supraland", "preco_brl": 4.99, "preco_normal_brl": 24.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/813630/Supraland/", "obs": "95% positivas (4.956 análises) · analisado em 23/11 13:13, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Bloons TD 6", "preco_brl": 5.57, "preco_normal_brl": 27.89, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/960090/Bloons_TD_6/", "obs": "97% positivas em 233 mil análises. · analisado em 26/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Peggle Deluxe", "preco_brl": 5.8, "preco_normal_brl": 29.0, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/3480/Peggle_Deluxe/", "obs": "97% positivas (11.150 análises) · analisado em 19/11 18:21, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Hotline Miami", "preco_brl": 6.59, "preco_normal_brl": 32.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/219150/Hotline_Miami/", "obs": "96% positivas (43.059 análises) · analisado em 23/11 13:13, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Supreme Commander: Forged Alliance", "preco_brl": 6.79, "preco_normal_brl": 33.98, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/9420/Supreme_Commander_Forged_Alliance/", "obs": "96% positivas (6.037 análises); preço cheio R$ 33,98 na Steam · analisado em 18/11 18:10, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "GRIS", "preco_brl": 9.39, "preco_normal_brl": 46.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/683320/GRIS/", "obs": "95% positivas em 27 mil análises. · analisado em 26/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Broforce", "preco_brl": 9.39, "preco_normal_brl": 46.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/274190/Broforce/", "obs": "96% positivas em 20 mil análises. · analisado em 26/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Enter the Gungeon", "preco_brl": 9.39, "preco_normal_brl": 46.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/311690/Enter_the_Gungeon/", "obs": "95% positivas em 39 mil análises. · analisado em 26/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Crawl", "preco_brl": 9.39, "preco_normal_brl": 46.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/293780/Crawl/", "obs": "95% positivas (3.948 análises). · analisado em 26/11 13:16, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Lost in Play", "preco_brl": 10.09, "preco_normal_brl": 50.49, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/1328840/Lost_in_Play/", "obs": "80% abaixo do preço cheio na Steam; 97% positivas em 1.908 análises · analisado em 24/11 18:10, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Botanicula", "preco_brl": 10.99, "preco_normal_brl": 54.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/207690/Botanicula/", "obs": "95% positivas em 2074 análises · analisado em 14/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "DOOM", "preco_brl": 12.3, "preco_normal_brl": 61.5, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/379720/DOOM/", "obs": "95% positivas (85.450 análises) · analisado em 23/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Creaks", "preco_brl": 13.99, "preco_normal_brl": 69.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/956030/", "obs": "96% positivas em 2096 análises · analisado em 14/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Tyrion Cuthbert: Attorney of the Arcane", "preco_brl": 17.79, "preco_normal_brl": 88.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/1590230/Tyrion_Cuthbert_Attorney_of_the_Arcane/", "obs": "96% positivas (1725 análises) · analisado em 20/11 18:33, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Batman: Arkham City GOTY", "preco_brl": 17.99, "preco_normal_brl": 89.99, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/200260/Batman_Arkham_City_Game_of_the_Year_Edition/", "obs": "96% positivas (27.475 análises) · analisado em 23/11 18:12, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "It Takes Two", "preco_brl": 39.8, "preco_normal_brl": 199.0, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/1426210/It_Takes_Two/", "obs": "95% positivas (48.612 análises) · analisado em 19/11 18:21, preço igual desde então", "confirmado": true, "termina_em": "2026-12-03T15:00", "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "steam", "item": "", "titulo": "Like a Dragon Gaiden: The Man Who Erased His Name", "preco_brl": 49.8, "preco_normal_brl": 249.0, "desconto_real_pct": 80, "loja": "Steam", "url": "https://store.steampowered.com/app/2375550/Like_a_Dragon_Gaiden_The_Man_Who_Erased_His_Name/", "obs": "96% positivas (5.004 análises) · analisado em 16/11 18:11, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "excelente", "secao": "keys", "item": "", "titulo": "Under The Waves (key Steam)", "preco_brl": 6.61, "preco_normal_brl": 149.99, "desconto_real_pct": 96, "loja": "Fanatical", "url": "https://www.cheapshark.com/redirect?dealID=w%2FQLxBqISBAdwXB7b8Am2KqNv1azTacvJx5k31Jpbo4%3D", "obs": "≈ R$ 6,61 (CheapShark). Na Steam está R$ 14,99 hoje, com preço cheio de R$ 149,99. 76% positivas em 1.787 análises. · analisado em 28/11 07:08, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "info", "secao": "gratis", "item": "", "titulo": "Vertical Drop Heroes HD (key Steam grátis)", "preco_brl": 0.0, "preco_normal_brl": 13.99, "desconto_real_pct": 100, "loja": "GamerPower", "url": "https://www.gamerpower.com/open/vertical-drop-heroes-hd-steam-key-giveaway", "obs": "75% positivas, mas só 154 análises na Steam (abaixo do mínimo de 500). Brinde visto no GamerPower, não conferido. · analisado em 27/11 13:11, preço igual desde então", "confirmado": false, "termina_em": "2026-11-28T23:59", "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "bug", "secao": "gratis", "titulo": "Dwarven Realms", "preco_brl": 0.0, "desconto_real_pct": 100, "loja": "Steam (key grátis)", "url": "https://www.gamerpower.com/open/dwarven-realms-steam-key-giveaway", "obs": "Key grátis por tempo limitado; 79% positivas na Steam (2.052 análises), acima dos mínimos. Pode esgotar. · analisado em 21/10 21:17, preço igual desde então", "confirmado": true, "usuarios": ["thiago", "daniela", "elizangela", "leonardo"]}, {"nivel": "quase", "secao": "tecnologia", "item": "Gabinete", "titulo": "Gabinete Gamer Rise Mode Wave White ATX", "preco_brl": 199.99, "preco_normal_brl": 270.0, "desconto_real_pct": 35, "loja": "Amazon", "url": "https://www.amazon.com.br/Gabinete-Gamer-Branco-Rise-Mode/dp/B0DKL9ZRWS/ref=sr_1_7", "obs": "41% abaixo da mediana da rodada, 28% abaixo do Zoom; sem avaliações nem fluxo de ar conferidos · analisado em 30/10 13:10, preço igual desde então", "confirmado": false, "usuarios": ["thiago"]}, {"nivel": "info", "secao": "tecnologia", "item": "Webcam de altíssima qualidade de imagem", "titulo": "EMEET S600L Webcam 4K com ring light", "preco_brl": 301.71, "preco_normal_brl": 0, "desconto_real_pct": 0, "loja": "AliExpress", "url": "https://pt.aliexpress.com/item/1005012129577330.html", "obs": "Preço real R$ 299,75 (o R$ 99,91 do card é a parcela de 3x; o 'de R$ 899' da loja não vale). Produto já no Brasil, nota 4,9 com só 12 avaliações. Preço comum do S600L não confirmado (o S600 aparece perto de R$ 600 no Magalu), então pode chegar perto de 50% abaixo, mas sem confirmação. · analisado em 26/10 11:15, preço igual desde então", "confirmado": false, "usuarios": ["thiago"]}, {"nivel": "quase", "secao": "tecnologia", "item": "Webcam de altíssima qualidade de imagem", "titulo": "EMEET Webcam C950 4K (8 MP, foco PDAF)", "preco_brl": 153.4, "preco_normal_brl": 295.0, "desconto_real_pct": 48, "loja": "Amazon", "url": "https://www.amazon.com.br/EMEET-Webcam-C950-para-cancelamento/dp/B0D7VD5SMS", "obs": "48% abaixo da mediana das ofertas do mesmo modelo na rodada; baixou de R$ 207,56. Nota e avaliações não conferidas, e não é modelo de referência da lista. Preço comum não confirmado em histórico. · analisado em 05/11 18:07, preço igual desde então", "confirmado": false, "usuarios": ["thiago"]}], "saude": [{"plataforma": "nuuvem", "metodo": "request", "status": "pulado", "detalhe": "falhou nas últimas 3 rodadas; novo teste em até 24 h"}, {"plataforma": "mercado-livre", "metodo": "busca-web", "status": "pulado", "detalhe": "falhou nas últimas 3 rodadas; novo teste em até 24 h"}, {"plataforma": "shopee", "metodo": "busca-web", "status": "pulado", "detalhe": "falhou nas últimas 3 rodadas; novo teste em até 24 h"}, {"plataforma": "aliexpress", "metodo": "request", "status": "pulado", "detalhe": "falhou nas últimas 3 rodadas; novo teste em até 24 h"}, {"plataforma": "pelando", "metodo": "request", "status": "pulado", "detalhe": "falhou nas últimas 3 rodadas; novo teste em até 24 h"}, {"plataforma": "aliexpress", "metodo": "navegador", "status": "ok", "ofertas": 289, "paginas": 10, "detalhe": ""}, {"plataforma": "amazon", "metodo": "navegador", "status": "ok", "ofertas": 1020, "paginas": 17, "detalhe": ""}, {"plataforma": "americanas", "metodo": "navegador", "status": "ok", "ofertas": 25, "paginas": 2, "detalhe": ""}, {"plataforma": "bing-shopping", "metodo": "navegador", "status": "ok", "ofertas": 169, "paginas": 6, "detalhe": ""}, {"plataforma": "casas-bahia", "metodo": "navegador", "status": "ok", "ofertas": 99, "paginas": 12, "detalhe": "HTTP 200, 0 candidatos"}, {"plataforma": "google-shopping", "metodo": "navegador", "status": "ok", "ofertas": 461, "paginas": 10, "detalhe": ""}, {"plataforma": "hardmob", "metodo": "navegador", "status": "ok", "ofertas": 60, "paginas": 1, "detalhe": ""}, {"plataforma": "jogos-gratis", "metodo": "api", "status": "ok", "ofertas": 5, "paginas": 1, "detalhe": ""}, {"plataforma": "kabum", "metodo": "navegador", "status": "ok", "ofertas": 960, "paginas": 16, "detalhe": ""}, {"plataforma": "kabum", "metodo": "request", "status": "ok", "ofertas": 160, "paginas": 16, "detalhe": ""}, {"plataforma": "lojas-de-keys", "metodo": "api", "status": "ok", "ofertas": 26, "paginas": 1, "detalhe": ""}, {"plataforma": "magalu", "metodo": "navegador", "status": "ok", "ofertas": 780, "paginas": 13, "detalhe": ""}, {"plataforma": "mercado-livre", "metodo": "navegador", "status": "ok", "ofertas": 468, "paginas": 8, "detalhe": ""}, {"plataforma": "nuuvem", "metodo": "navegador", "status": "ok", "ofertas": 23, "paginas": 1, "detalhe": ""}, {"plataforma": "pelando", "metodo": "navegador", "status": "ok", "ofertas": 119, "paginas": 18, "detalhe": "HTTP 200, 0 candidatos"}, {"plataforma": "pichau", "metodo": "navegador", "status": "ok", "ofertas": 497, "paginas": 14, "detalhe": ""}, {"plataforma": "promobit", "metodo": "navegador", "status": "ok", "ofertas": 93, "paginas": 3, "detalhe": ""}, {"plataforma": "promobit", "metodo": "request", "status": "ok", "ofertas": 32, "paginas": 3, "detalhe": ""}, {"plataforma": "steam", "metodo": "api", "status": "ok", "ofertas": 66, "paginas": 1, "detalhe": ""}, {"plataforma": "terabyte", "metodo": "navegador", "status": "ok", "ofertas": 524, "paginas": 15, "detalhe": ""}], "manutencao": ["A leitura das ofertas de livros da Amazon está pegando o preço \"de\" errado (R$ 49,65 aparece como R$ 4.965), o que gera falsos descontos de 99%. É preciso corrigir a coleta."], "admin": "thiago", "nomes": {"thiago": "Thiago", "daniela": "Daniela", "elizangela": "Elizangela", "leonardo": "Leonardo"}}</script>
+<script>
+(function () {
+  const SECOES = [
+    ["tecnologia", "Tecnologia e periféricos"], ["steam", "Steam"], ["keys", "Keys em lojas oficiais"],
+    ["gratis", "Grátis por tempo limitado"], ["quase", "Quase lá"]];
+  const NIVEL = { bug: "Bug de preço", excelente: "Excelente", quase: "Quase lá", info: "Vale olhar" };
+  const FORMAS = ["api", "request", "navegador", "busca-web"];
+  const NOME_FORMA = { api: "API", request: "Página", navegador: "Navegador", "busca-web": "Busca web" };
+  const NOME_ST = { ok: "ok", vazio: "vazio", erro: "erro", bloqueado: "bloqueado", captcha: "captcha",
+                    pulado: "pulado", tempo: "tempo", "-": "—" };
+  const brl = (v) => v == null ? "" : "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const el = (tag, attrs, ...filhos) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === "text") e.textContent = v; else e.setAttribute(k, v);
+    }
+    for (const f of filhos) if (f) e.append(f);
+    return e;
+  };
+  const seguro = (u) => /^https?:\/\//i.test(u || "") ? u : null;
+
+  // termina_em ("2026-11-03T23:59", horário de Brasília, lido da loja pela coleta) contado a partir de agora
+  function prazo(termina_em) {
+    const fim = termina_em ? new Date(termina_em + ":00-03:00") : null;
+    if (!fim || isNaN(fim)) return null;
+    const min = Math.round((fim - Date.now()) / 60000);
+    if (min <= 0) return { texto: "promoção encerrada", urgente: true };
+    const data = fim.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                                               timeZone: "America/Sao_Paulo" }).replace(",", "");
+    if (min < 60) return { texto: "termina em " + min + " min", urgente: true };
+    if (min < 48 * 60) return { texto: "termina em " + Math.floor(min / 60) + " h (" + data + ")", urgente: min < 6 * 60 };
+    return { texto: "até " + data, urgente: false };
+  }
+
+  function cartao(o) {
+    const preco = el("div", { class: "preco" }, el("span", { class: "etiqueta", text: brl(o.preco_brl) }));
+    if (o.preco_normal_brl && o.preco_normal_brl > o.preco_brl) preco.append(el("span", { class: "de", text: brl(o.preco_normal_brl) }));
+    if (o.desconto_real_pct) preco.append(el("span", { class: "desc", text: "−" + Math.round(o.desconto_real_pct) + "% real" }));
+    const acoes = el("div", { class: "acoes" });
+    const url = seguro(o.url);
+    if (url) acoes.append(el("a", { class: "btn", href: url, target: "_blank", rel: "noopener", text: "Abrir oferta" }));
+    if (o.loja) acoes.append(el("span", { class: "selo", text: o.loja }));
+    if (o.confirmado === false) acoes.append(el("span", { class: "selo", text: "não confirmado na loja" }));
+    const fim = prazo(o.termina_em);
+    if (fim) acoes.append(el("span", { class: "selo" + (fim.urgente ? " urgente" : ""), text: fim.texto }));
+    return el("article", { class: "oferta", "data-nivel": o.nivel },
+      el("div", {}, el("span", { class: "nivel", "data-nivel": o.nivel, text: NIVEL[o.nivel] || o.nivel }),
+                    el("p", { class: "titulo", text: o.titulo })),
+      preco, o.obs ? el("div", { class: "detalhes", text: o.obs }) : null, acoes);
+  }
+
+  function render(d) {
+    const quando = d.inicio ? new Date(d.inicio) : null;
+    const partes = [];
+    if (quando) partes.push("Rodada de " + quando.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) +
+                            " às " + quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+    if (d.duracao_s) partes.push(Math.floor(d.duracao_s / 60) + " min " + Math.round(d.duracao_s % 60) + " s");
+    if (d.lojas_ok != null) partes.push(d.lojas_ok + " de " + d.lojas_total + " lojas responderam");
+    document.getElementById("meta").textContent = partes.join(" · ");
+    document.getElementById("resumo").textContent = d.resumo || "";
+
+    // ?u=<usuário>: só os achados dele (link da notificação de cada usuário); saúde e manutenção ficam com o admin
+    const u = new URLSearchParams(location.search).get("u");
+    const deOutro = u && d.admin && u !== d.admin;
+    const achados = (d.achados || []).filter((o) => !u || !o.usuarios || o.usuarios.includes(u));
+    if (deOutro && d.nomes && d.nomes[u]) document.getElementById("resumo").textContent =
+      "Ofertas da lista de " + d.nomes[u] + (achados.length ? "." : ": nada novo nesta rodada.");
+    const conta = (n) => achados.filter((o) => o.nivel === n).length;
+    const chips = document.getElementById("chips");
+    chips.replaceChildren();
+    for (const [n, cor] of [["bug", "var(--bug)"], ["excelente", "var(--hot)"], ["quase", "var(--near)"]]) {
+      const c = el("span", { class: "chip" }, el("span", { class: "dot", style: "color:" + cor }));
+      c.append(conta(n) + " " + (NIVEL[n] || n).toLowerCase());
+      chips.append(c);
+    }
+
+    const secoes = document.getElementById("secoes");
+    secoes.replaceChildren();
+    for (const [id, nome] of SECOES) {
+      const itens = achados.filter((o) => (id === "quase" ? o.nivel === "quase" : o.secao === id && o.nivel !== "quase"));
+      const s = el("section", {}, el("h2", {}, nome, el("span", { class: "n", text: itens.length ? String(itens.length) : "" })));
+      if (!itens.length) s.append(el("p", { class: "vazio", text: "Nada relevante agora." }));
+      const ordem = { bug: 0, excelente: 1, info: 2, quase: 3 };
+      itens.sort((a, b) => (ordem[a.nivel] ?? 9) - (ordem[b.nivel] ?? 9));
+      for (const o of itens) s.append(cartao(o));
+      secoes.append(s);
+    }
+
+    const formas = deOutro ? [] : d.saude || [];
+    if (formas.length) {
+      const lojas = [...new Set(formas.map((f) => f.plataforma))].sort();
+      const tab = document.getElementById("saude");
+      tab.replaceChildren(el("tr", {}, el("th", { text: "Loja" }), ...FORMAS.map((f) => el("th", { text: NOME_FORMA[f] }))));
+      for (const l of lojas) {
+        const tr = el("tr", {}, el("td", { text: l }));
+        for (const f of FORMAS) {
+          const x = formas.find((y) => y.plataforma === l && y.metodo === f);
+          const s = x ? x.status : "-";
+          const td = el("td", { title: x && x.detalhe ? x.detalhe : null },
+            el("span", { class: "st", "data-s": s }, el("span", { class: "dot" }), NOME_ST[s] || s));
+          tr.append(td);
+        }
+        tab.append(tr);
+      }
+      document.getElementById("sec-saude").hidden = false;
+    }
+    const manut = deOutro ? [] : d.manutencao || [];
+    if (manut.length) {
+      document.getElementById("manut").replaceChildren(...manut.map((m) => el("li", { text: m })));
+      document.getElementById("sec-manut").hidden = false;
+    }
+  }
+
+  const embutido = document.getElementById("dados-embutidos");
+  if (embutido) { render(JSON.parse(embutido.textContent)); return; }
+  fetch("dados.json", { cache: "no-store" }).then((r) => {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(render).catch(() => {
+    document.getElementById("meta").textContent = "Ainda não há relatório publicado. Ele aparece aqui depois da próxima rodada.";
+  });
+})();
+</script>
+</body></html>
